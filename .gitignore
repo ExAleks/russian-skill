@@ -1,0 +1,8 @@
+# OS junk
+Thumbs.db
+.DS_Store
+
+# Editor dirs that are not part of the package
+.claude/
+.codex/
+.gemini/
