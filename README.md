@@ -13,7 +13,7 @@
 | Инструмент | Файл | Установка (глобально) | Установка (в проект) |
 |---|---|---|---|
 | Claude Code | `claude-code/russian/SKILL.md` | `~/.claude/skills/russian/` | `.claude/skills/russian/` |
-| OpenCode | `opencode/russian/SKILL.md` | `~/.config/opencode/skills/russian/` или через `"skills"` в `opencode.json` | `.opencode/skills/russian/` |
+| OpenCode | `opencode/russian/SKILL.md` | `~/.config/opencode/skills/russian/` (или `$XDG_CONFIG_HOME/opencode/skills/russian/`) | `.opencode/skills/russian/` |
 | Codex CLI | `codex/AGENTS.md` | `~/.codex/AGENTS.md` | `AGENTS.md` в корне |
 | Cursor | `cursor/.cursor/rules/russian.mdc` | — | `.cursor/rules/` в корне (`alwaysApply: true`) |
 | Cline | `cline/.clinerules/russian.md` | Custom Instructions: `cline/user-instructions.txt` | `.clinerules/` в корне |
@@ -21,7 +21,7 @@
 | Gemini CLI | `gemini/GEMINI.md` | `~/.gemini/GEMINI.md` | `GEMINI.md` в корне |
 
 Глобальное правило для OpenCode (действует всегда, а не по триггеру скилла):
-`opencode/AGENTS.md` → `~/.config/opencode/AGENTS.md`.
+`shared/language-rule.md` → блок в `~/.config/opencode/AGENTS.md`.
 
 ## Суть правила
 
@@ -54,14 +54,44 @@ chmod +x install.sh && ./install.sh
 
 ### Вручную
 
-Скопируйте нужный файл из таблицы выше в соответствующий путь. Точки назначения
-создаются автоматически, существующие файлы не перезаписываются без `--force`.
+Скопируйте нужный файл из таблицы выше в соответствующий путь. Для инструкций
+(`AGENTS.md`, `GEMINI.md`) скопируйте блок из `shared/language-rule.md`, а не
+перезаписывайте файл целиком — иначе потеряются ваши собственные правила.
+
+## Что делает установщик
+
+- Ставит скилл OpenCode в `skills/russian/` (именно `skills`, не `skill`) и учитывает
+  `XDG_CONFIG_HOME`, если переменная задана.
+- Правило языка **дописывает** в существующие `AGENTS.md` / `GEMINI.md`, а не заменяет их.
+  Блок обёрнут маркерами `<!-- russian-skill:begin -->` / `<!-- russian-skill:end -->`,
+  поэтому повторный запуск обновляет его на месте и не создаёт дублей.
+- Сохраняет переводы строк файла (LF или CRLF) и кодировку UTF-8 без BOM.
+- С `--force` / `-Force` перезаписывает файлы скилла, оставляя копию `*.bak-<timestamp>`.
+- В конце проверяет, что скилл и правило действительно лежат по ожидаемым путям,
+  и завершается с ненулевым кодом, если что-то не на месте.
+- `--list-only` / `-ListOnly` показывает план без записи, `--project-dir` / `-ProjectDir`
+  дополнительно ставит правила Cursor, Windsurf и Cline в проект.
+
+## Тесты
+
+Установщики проверяются смоук-тестами: правильный путь скилла, сохранение
+пользовательского `AGENTS.md`, отсутствие дублей блока при повторном запуске, CRLF,
+файл без завершающего перевода строки, `XDG_CONFIG_HOME`.
+
+```powershell
+powershell -NoProfile -File .\tests\run-tests.ps1
+```
+
+```sh
+./tests/run-tests.sh
+```
 
 ## Заметки по совместимости
 
 - **Claude Code / OpenCode**: скилл срабатывает по `description`, когда пользователь
-  пишет по-русски или просит русский. Для безусловного действия продублируйте правило
-  в `CLAUDE.md` (Claude Code) или глобальном `AGENTS.md` (OpenCode).
+  пишет по-русски или просит русский. Для безусловного действия установщик сам
+  дописывает правило в глобальный `AGENTS.md` (OpenCode); в Claude Code продублируйте
+  блок из `shared/language-rule.md` в `CLAUDE.md`.
 - **Codex CLI и Gemini CLI** скиллов не имеют — там правило идёт через `AGENTS.md` / `GEMINI.md`.
 - **Cursor и Windsurf**: правило живёт в проекте, куда скопирован файл; флаги
   `alwaysApply` / `trigger: always_on` делают его постоянным.
